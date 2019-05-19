@@ -1,0 +1,415 @@
+# EXERCISE 8
+
+This question involves the use of simple linear regression on the Auto data set
+
+a) Use the lm() function to perform a simple linear regression with mpg as the response and horsepower as the predictor. Use the summary() function to print the results. Comment on the output.
+
+For example:
+
+i) Is there a relationship between the predictor and the response?
+
+ii) How strong is the relationship between the predictor and the response?
+
+iii) Is the relationship positive or negative?
+
+iv) What is the predicted mpg associated with a horsepower of 98? What are the associated 95% confidence and prediction intervals?
+
+b) Plot the response and the predictor. Use abline() to display the least squares regression line.
+
+c) Use the plot() function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the fit.
+
+```{r}
+library(MASS)
+library(ggplot2)
+library(reshape2)
+library(ISLR)
+attach(Auto)
+head(Auto)
+summary(Auto)
+
+# a)
+lm_auto1 <- lm(mpg ~ horsepower, data = Auto)
+summary(lm_auto1)
+# simple predict
+print("Simple Prediction below ")
+predict(lm_auto1, data.frame(horsepower = c(98)))
+# predict and 95% confidence interval
+print("predict and 95% confidence interval below ")
+print("The expected value of  Y given our data is inside this interval with prob 95% ")
+predict(lm_auto1, data.frame(horsepower = c(98)), interval = "confidence", level = 0.95)
+# predict and 95% prediction interval
+print("predict and 95% prediction interval below ")
+print("The real value Y is inside this interval with prob 95% -- I take also noise into account --> wider interval")
+predict(lm_auto1, data.frame(horsepower = c(98)), interval = "prediction", level = 0.95)
+```
+There is a linear correlation between horsepower and miles per gallon(duh), the correlation is negative with a coefficient of -0.15 and significant because the p-value is close to 0, therefore we reject the null hypothesis H0 that the coefficient is = 0.
+
+Another statistic that tells us that there is a relationship between horsepower and mpg is the F-statistic. It's not close to 1 and the attached p-value is close to zero --> at least one of the coefficients related to our variables is != 0. Of course here we only have one variable so this statistic is less useful.
+
+In English: for each horsepower we add to our engine, we will travel 0.15 less miles per gallon of fuel used.
+
+
+
+```{r}
+# b)
+{plot(x = horsepower, y = mpg)
+abline(lm_auto1, col = "red")  
+}
+
+```
+
+We can see that the relationship is not perfectly linear
+
+
+```{r}
+# c)
+par(mfrow = c(2,2))
+plot(lm_auto1)
+```
+1) Residuals vs Fitted
+
+This figure shows the Residuals (mpg - predicted_mpg) on the y-axis and the predicted values, predicted_mpg on the x-axis
+
+- the assumption of linearity is not respected, we can see a pattern. 
+- we under-predict extreme values (on the tails) and over-predict the middle values (between ~12 and ~27)
+- we don't have constant variance for the residuals, we can see that variance increases as we go to the right
+
+
+2) Normal Q-Q
+
+Quantile Quantile plot: 
+y - axis quantiles of Standardized residuals (residuals with mean 0 and std of 1)
+x - axis quantiles of Standard Gaussian
+
+We can see that we have deviation from the norm on the tails: 
+
+- lower (left) tail is "lighter" --> values are smaller than what we would be expected under a standard modeling
+line is less steep than normal line
+
+
+- upper (right) tail is "heavier" --> values are larger than what we would be expected under a standard modeling
+line is steeper than normal line
+
+
+3) Scale-Location
+
+Similar to 1), uses sqrt(residuals) instead of normal residuals. We still see a pattern 
+
+4) Residuals vs Leverage
+
+One possible definition is that an outlier is any point that isn’t approximated well by the model (has a large residual) and which significantly influences model fit (has large leverage). This is where the Residuals vs Leverage plot comes in.
+
+high leverage -> unusual x value
+We can see several points with unusual values (high leverage), probably cars with high horsepower
+
+```{r}
+# manual standardized residuals vs leverage plot
+auto_res <- lm_auto1$residuals
+st_residuals <- (auto_res - mean(auto_res)) / sd(auto_res)
+leverage <- hatvalues(lm_auto1)
+ggplot(data = data.frame(st_residuals = st_residuals, leverage = leverage), aes(x = leverage, y = st_residuals)) + geom_point(color = "#CC0000")  + ylab("Standardized Residuals") + theme_bw()
+
+```
+
+# EXERCISE 9
+
+This question involves the use of multiple linear regression on the Auto data set
+
+a) Produce a scatterplot matrix which includes all of the variables in the data set.
+
+b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, which is qualitative
+
+c) Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors. Use the summary() function to print the results. Comment on the output. For instance:
+
+i) Is there a relationship between the predictors and the response?
+
+ii) Which predictors appear to have a statistically significant relationship to the response?
+
+iii) What does the coefficient for the year variable suggest?
+
+d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+
+e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?
+
+f) Try a few different transformations of the variables, such as log(X), sqrt(X), X^2. Comment on your findings.
+
+
+```{r}
+# a
+head(Auto)
+str(Auto)
+table(Auto$cylinders)
+# scatterplot matrix of the whole dataset, removing categorical variables: cylinders, year, origin, name
+### I think it's more readable than using the whole dataset
+num_Auto <- Auto[, !(colnames(Auto)  %in% c("cylinders", "year", "name", "origin"))]
+pairs(num_Auto)
+```
+
+```{r}
+# b
+noname_Auto <- Auto[, !(colnames(Auto)  %in% c("name"))]
+cor(noname_Auto)
+```
+If we check the first column, correlations of mpg, our target variable, we can infer a couple of things:
+
+- # of cylinders, volume of the engine, weight, and horsepower of the engine are negatively correlated: bigger, more powerful engines neeed more gasoline
+
+On the contrary car which are more recent and with a better acceleration have lower consumptions.
+
+The correlation of mpg vs origin is interesting: values are 1,2,3 corresponding to America, Europe, Japan. Probably it would be better to have separate indicator variables? As it is, it seems that American cars consumption > European cars > Japanese cars, as the miles per gallon increase with the increase of the value of the origin variable.
+
+We probably, and understandably, have a lot of collinear variables (usually more cylinders --> bigger engine, higher vehicle weight etc).
+It is easy to visualize this by looking at the scatterplot in a) and by checking the correlations in the corr matrix above.
+
+```{r}
+# c --  multiple linear regression with mpg as the response and all other variables except name as the predictors
+
+lm_auto2 <- lm(mpg ~ .-name, data = Auto)
+summary(lm_auto2)
+```
+comment:
+ 
+F-statistic != 1 and significant p-value --> at least one coefficient is != 0, one or more of our variable(s) are linearly correlated w/ our target variable. 
+
+Our model explains ~82% of the variability of mpg values.
+
+We can see a "not so small" coefficient for cylinders but the standard error of the coefficient is ~ the coefficient --> we cannot be sure it's != 0.
+Other coefficients are very small and with non significant p-values.
+
+The two variables that seem to explain more mpg are year and origin (it makes sense, especially considering these are cars from the '70s to the '80s).
+It would be interesting to compare these insights with the cost of gasoline in Japan, Europe, and the US in the same time span.
+
+```{r}
+# d
+par(mfrow = c(2,2))
+plot(lm_auto2)
+
+# note that row.names(Auto) are strings, not numbers!
+# maybe outlier?
+Auto["14",] # 14 has an unusual combination of predictor values and is predicted to consume less gasoline
+predict(lm_auto2, Auto["14",])
+# high residuals:
+# 326 and 394 are big, heavy, german vehicles, they are predicted to consume more gasoline than their real mpg
+Auto["326",]
+predict(lm_auto2, Auto["326",])
+Auto["394",]
+predict(lm_auto2, Auto["394",])
+```
+
+- We don't see a clear trend in the Residuals vs Fitted: no perfect linearity but I think we can accept the approximation.
+
+- QQ plot is upper-tail heavy. Apart from upper values we have normality for our residuals.
+
+- Residuals vs Leverage --> we have one high leverage point with a high residual (obs # 14) --> could be an outlier
+  We have two observations which are underpredicted by ~10 mpg (326 and 394), our linear regression does not model german engineering very well (or   they cheated on gas usage even back in the 80s)
+  
+  
+e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?
+
+f) Try a few different transformations of the variables, such as log(X), sqrt(X), X^2. Comment on your findings.
+
+```{r}
+# e
+lm_auto3 <- lm(mpg ~ -name + origin*year + horsepower*weight , data = Auto)
+summary(lm_auto3)
+anova(lm_auto2, lm_auto3)
+
+```
+Both interactions tested are statistically significant, albeit origin:year with a lower level of confidence.
+Our updated model with fewer features explains 86% of the variabilities compared to ~82% of the model with all features.
+Using anova to compare the two we see that actually there is no significant improvement (RSS are very close and anova does not compute F and pvalue).
+
+```{r}
+# f
+lm_auto4 <- lm(mpg ~ log(horsepower) + horsepower , data = Auto)
+lm_auto5 <- lm(mpg ~ I(horsepower^2) + horsepower , data = Auto)
+summary(lm_auto4)
+summary(lm_auto5)
+summary(lm_auto1)
+anova(lm_auto1, lm_auto4)
+anova(lm_auto1, lm_auto5)
+anova(lm_auto4, lm_auto5)
+
+
+```
+Since mpg is not in a linear relationship with horsepower it's not surprising that a transformation of horsepower would perform a bit better.
+We tried: 
+1. log(horsepower) + horsepower
+2. horsepower^2 + horsepower
+
+both are significantly better than just horsepower, but one is not better than the other.
+
+
+# Exercise 10
+
+This question should be answered using the Carseats data set.
+
+a) Fit a multiple regression model to predict Sales using Price, Urban, and US.
+
+b) Provide an interpretation of each coefficient in the model. Be careful -- some variables in the model are qualitative!
+
+c) Write out the model in equation form, being careful to handle the qualitative variables properly.
+
+d) For which of the predictors can you reject the null hypothesis H0 : Bj = 0?
+
+e) On the basis of your response to the previous question, fit a smaller model that only uses the predictors for which there is evidence of association with the outcome.
+
+f) How well do the models in a) and e) fit the data?
+
+g) Using the model from e), obtain 95% confidence intervals for the coefficient(s),
+
+h) Is there evidence of outliers or high leverage observations in the model from e)
+
+```{r}
+# a
+head(Carseats)
+lm_seats1 <- lm(Sales ~ Price + Urban + US, data = Carseats)
+summary(lm_seats1)
+```
+# b) Provide an interpretation of each coefficient in the model. Be careful -- some variables in the model are qualitative!
+
+Analysing our model, we see a significant inverse linear correlation between Sales and Price: cheaper carseats sell more.
+
+The location of the store in a urban or rural location does not affect Sales, small coefficient and low p-value.
+
+Stores located in the US have significantly higher Sales numbers than stores not in the US.
+
+# c) Write out the model in equation form, being careful to handle the qualitative variables properly.
+
+Sales = B0 + B1xPrice + B2x(indicatorRV(US)) + B3x(indicatorRV(Urban))
+
+# d) For which of the predictors can you reject the null hypothesis H0 : Bj = 0?
+
+We can reject the null hypothesis for Price and US
+
+# e) On the basis of your response to the previous question, fit a smaller model that only uses the predictors for which there is evidence of association with the outcome.
+
+```{r}
+lm_seats2 <- lm(Sales ~ Price + US, data = Carseats)
+summary(lm_seats2)
+anova(lm_seats1, lm_seats2)
+```
+This model is not significantly better than the one with one useless predictor more.
+
+# f) How well do the models in a) and e) fit the data?
+
+Both models do not fit the data well (Adjusted R-squared ~ 0.235)
+
+# g) Using the model from e), obtain 95% confidence intervals for the coefficient(s),
+
+```{r}
+confint(lm_seats2, level = 0.95)
+```
+
+
+# h) Is there evidence of outliers or high leverage observations in the model from e)
+
+```{r}
+par(mfrow = c(2,2))
+plot(lm_seats2)
+```
+We have a high leverage observation but it does not have an extreme residual value.
+The Residuals vs Leverage plot indicates observations 26, 50 and 368 as potential outliers but, since they don't have high leverage, and we know that our model does not fit the data well we are inclined to keep them in our analysis.
+
+# Exercise 11, 12, 13 skipped
+
+# Exercise 14
+
+This problem focuses on the collinearity problem
+
+# a) 
+
+```{r}
+set.seed(1)
+x1 <- runif(100)
+x2 <- 0.5 * x1 + rnorm(100)/10
+y <- 2+ 2 * x1 + 0.3 * x2 + rnorm(100) * 0.7 # i  think rnomr(100) is too much noise,
+```
+regression coefficients seem to be B0 = 2, B1 = 2, B2 = 0.3
+in reality we only have 2 coefficients since x2 is basically x1/2:
+
+y = 2x1 + 3/10 * x1/2 + 2 --> y = (23/10)x1 + 2 --> y = 2.3x1 + 2
+# b) What is the correlation between x1 and x2? Create a scatterplot displaying the relationship between the variables.
+
+x1 and x2 are linearly correlated: for each increase of 1 to x1, x2 increases by 0.5 + small noise
+
+```{r}
+plot(x1, x2)
+```
+# c) using this data, fit a least squares regression to predict y using x1, x2. Comment
+```{r}
+lm_1 <- lm(y ~ x1 + x2)
+summary(lm_1)
+confint(lm_1)
+
+```
+ There is evidence for x1 to explain y, positive linear correlation.
+ There is no evidence for x2 to explain y.
+ 
+ 
+ B0hat is a good estimation of B0 --> Reject H0
+ B1hat is underestimated with a large confidence interval --> Reject H0
+ B2hat is overestimated with a huge confidence interval (and not significant p-value) --> Cannot reject H0
+ 
+# d) y~x1
+```{r}
+lm_2 <- lm(y ~ x1)
+summary(lm_2)
+plot(x1, y)
+```
+I can reject H0
+
+# e) y~x2
+```{r}
+lm_3 <- lm(y ~ x2)
+summary(lm_3)
+plot(x2, y)
+```
+I can reject H0
+
+# f) are answers to c-e contradictory?
+
+No, because we know that x2 depends from x1 so if there is a correlation between y and x1, there will be a correlation also between y and x2
+model e) explains the y using x2 as a proxy of x1, in fact the coefficient for x2 is huge compared to the real coefficient B2 and closer to B1
+
+In model d) the coefficient for x1 has a better estimate than in the first model (c)
+
+In model c) the estimation of the coefficient for x1 is "dragged down" by the fact that x2 is present, collinear with x1, while the importance of x2 is overestimated.
+
+All three models fit the data badly because of the collinearity of the two predictors, which makes finding the minimum harder.
+
+# g) add additional obs which has been mismeasured
+
+refit models from c to e with the new observation. What is the effect?
+
+In each model, is this obs an outlier? A high-leverage point? Both? Eplain
+
+```{r}
+x1 <- c(x1, 0.1)
+x2 <- c(x2, 0.8)
+y <- c(y, 6)
+
+# refit models
+lm_1 <- lm(y ~ x1 + x2)
+lm_2 <- lm(y ~ x1)
+lm_3 <- lm(y ~ x2)
+
+# evaluate models
+summary(lm_1)
+summary(lm_2)
+summary(lm_3)
+#diagnostic plots
+par(mfrow = c(2,2))
+plot(lm_1)
+plot(lm_2)
+plot(lm_3)
+
+
+
+
+```
+ 
+ 
+ 
+ 
+

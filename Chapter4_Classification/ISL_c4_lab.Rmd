@@ -1,0 +1,152 @@
+The Stock Market Data
+
+Smarked dataset:
+
+percentage returns for the S&P 500 stock index over 1250 days from the beginning of 2001 until the end of 2005.
+For each date we have recorded: 
+
+Lag1 through Lag5 -- the percentage returns for each of the five previous trading days
+Volume -- the number of shares traded on the previous day, in billions
+Today -- the percentage return on the date in question
+Direction -- whether the market was Up or Down on this day
+
+We will try to predict the Direction of the market on a certain day using info of the past
+
+
+```{r}
+library(ISLR)
+library(tidyverse)
+head(Smarket)
+dim(Smarket)
+summary(Smarket)
+```
+
+Check correlation between our predictor (cannot compute it for our target variable since it's categorical)
+
+```{r}
+# I used pipe functionality from magrittr and select from dplyr
+market_cor <- Smarket %>% select(-Direction) %>% cor()
+market_cor
+#apply(market_cor,1,function(x)ifelse(x >0.1, TRUE, FALSE))
+```
+The only sizable correlation is between Year and Volume --> each year the number of shares traded increases
+```{r}
+time_vs_volume <- ggplot(data = Smarket, aes(x = as.numeric(row.names(Smarket)), y = Volume))
+time_vs_volume + geom_point(color = "#CC0000") + ylab("Shares traded -- billions") + xlab("Index") + theme_bw()
+attach(Smarket)
+plot(Volume)
+head(row.names(Smarket))
+
+```
+
+# Logistic Regression
+
+Let's fit a Logistic Regression model to predict Direction using Lag1 -- Lag5 and Volume.
+The glm() function fits generalized linear models, a class of models that includes logistic regression.
+To specify that we want a logistic regression we pass to it the argument family = binomial
+
+```{r}
+log_reg1 <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Smarket, family = binomial)
+summary(log_reg1)
+```
+
+The smallest p-value (Pr(>|z|)) is associated to the predictor Lag1. The negative predictor suggests that if the market had a positive return yesterday, then it is less likely to go up today. However, at a vaue of 0.15, the p-value is still relatively large, and so there is no clear evidence of a real association between Lag1 and Direction.
+
+We use the coef() function in order to access just the coefficients for this fitted model. We can also use summary() function to access particular aspects of the fitted model, such as the p-values for the coefficients:
+
+```{r}
+coef(log_reg1) # just the estimates
+summary(log_reg1)$coef  # the full table
+summary(log_reg1)$coef[,4]  #the p-values
+```
+
+The predict() function can be used to predict the probability that the market will go up, given values of the predictors.
+The type = "response" option tells R to output probabilities of the form P(Y = 1| X), as opposed to other information such as the logit.
+If no data set is suplied to the predict() function, then the probabilities are computed for the training data that was used to fit the logistic regression model.
+Here we have printed only the first ten probabilities.
+We know that these values correspond to the probability of the market going up, rather than down, because the contrasts() function indicates that R has created a dummy variable with a 1 for Up:
+```{r}
+log_reg1_probs <- predict(log_reg1, type = "response")
+log_reg1_probs[1:10]
+contrasts(Direction)
+```
+
+In order to make a prediction as to whether the market will go up or down on a particular day, we must convert these predicted probabilities into class labels, Up or Down. The following two commands create a vector of class predictions based on whether the probability of a market increased is greater than or less than 0.5.
+
+Given these predictions, the table() function can be used to produce a confusion matrix in order to determine how many observations were correctly or incorrectly classified
+```{r}
+log_reg1_pred <- rep("Down", 1250) # initialize vector w/ length = # of obs, value --> Down
+log_reg1_pred[log_reg1_probs > 0.5] = "Up" # change to up the element in the vector that have and index = to the index of elements of the vector of probabilies that have a value > 0.5  -- confusing explanation ^^'
+table(log_reg1_pred, Direction)
+(507+145) / 1250 # 
+mean(log_reg1_pred==Direction) # number of obs predicted == observed
+
+```
+The diagonal elements of the confusion matrix indicate correct predictions, while the off-diagonals represent incorrect predictions.
+
+Hence our model correctly predicted that the market would go up on 507 days and that it would go down on 145 days, for a total of 507 + 145 = 652 correct predictions.
+
+The mean() function can be used to compute the fraction of days for which the prediction was correct. In this case, logistic regression correctly predicted the market 52.2% of the time.
+
+At first glance, it appears that Log Reg is working slightly better than random guessing.
+However this result is miselading because we trained and tested the model on the same dataset. In other words 100 - 52.2 = 47.8 % is the training error rate. The training error rate is often overly optimisting -- it tends to underestimate the test error rate. In order to better assess the accuracy of the logistic regression model in this setting, we can fit the model using part of the data, adn then examine how well it predicts the held out data. 
+
+This will yield a more realistic error rate, in the sense that in practice we will be interested in our model's performance not on the data that we used to fit the model, but rather on days in the future for which the market's movements are unknown.
+
+
+We will create a vector of observations from 2001 through 2004 to be used to fit(train) our model. <-- TRAINING DATA
+We will use the traned model to predict observations from 2005 <-- TESTING DATA
+
+```{r}
+train <- (Year < 2005) # we can use just the column names, e.g. Year, because we attached their dataframe, Smarket, previously. 
+Smarket_2005 <- Smarket[!train,] # select just rows for which train is FALSE
+dim(Smarket_2005)
+Direction_2005 <- Direction[!train] # same for the observed results --> this is the "truth" for the 2005 observations
+```
+
+We now fit a logistic regression model using only the subset of the observations that correspond to dates before 2005, using the subset argument.
+We then obtain the predicted probabilities of the stock market going up for each of the days in our test set.
+
+```{r}
+log_reg2 <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Smarket, family = binomial, subset = train)
+log_reg2_probs <- predict(log_reg2,Smarket_2005, type = "response") # now we specify the observations to predict, our test dataset
+```
+
+Finally, we compute the predictions for 2005 and compare them to the actual movements of the market over that time period.
+
+```{r}
+log_reg2_preds <- rep("Down", 252)
+log_reg2_preds[log_reg2_probs > 0.5] = "Up"
+
+table(log_reg2_preds)
+mean(log_reg2_preds == Direction_2005) # obs correctly predicted
+mean(log_reg2_preds != Direction_2005) # obs wrongly predicted
+
+```
+
+
+The TEST ERROR RATE is 52%, higher than the training error rate (which was 47.8 %), Our binary classifier is slightly worse than tossing a fair coin!
+
+Of course this result is not surprising --> it's simply not feasible to predict the stock market using the previous days returns.
+
+We recall that the logistic regression model had very underwhelming p-values associated with all of the predictors, and that the smallest p-value, though not very small, corresponded to Lag1.
+
+Perhaps by removing the variables that appear not to be helpful in predicting Direction, we can obtain a more effective model.
+After all, using predictors that have no relationship with the response tends to cause a deterioration in the test error rate (since such predictors cause an increase in variance without a corresponding decrease in bias), and so removing such predictors may in turn yield an improvement.
+
+Below we have refit the logistic regression using just Lag1 and Lag2, which seemed to have the highest predictive power in the original logistic regression model
+
+
+```{r}
+log_reg3 <- glm(Direction ~ Lag1 + Lag2, data = Smarket, family = binomial, subset = train)
+log_reg3_probs <- predict(log_reg3,Smarket_2005, type = "response")
+log_reg3_preds <- rep("Down", 252)
+log_reg3_preds[log_reg3_probs > 0.5] = "Up"
+
+table(log_reg3_preds)
+mean(log_reg3_preds == Direction_2005) # obs correctly predicted
+mean(log_reg3_preds != Direction_2005) # obs wrongly predicted
+```
+
+
+

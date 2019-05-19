@@ -1,0 +1,191 @@
+ISL Chapter 3 -- Linear Regression
+
+Load required libraries:
+```{r}
+library(MASS)
+library(ISLR)
+library(ggplot2)
+library(reshape2)
+library(tidyverse)
+set.seed(1)
+```
+Explore data: head, summary, table(for discrete features), plotting
+```{r}
+head(Boston)
+summary(Boston)
+
+
+# we can see that rad (index of accessibility to radial highways), chas(Charles River dummy variable) are discrete
+table(Boston$rad)
+table(Boston$chas)
+
+# create long dataframe for plotting our explanatory variables against medv, our target variable
+Blong <-melt(Boston, id = "medv")
+# let the explanatory variable scale (x-axis) free since they have very different ranges
+ggplot(data = Blong, aes(x = value, y = medv)) + geom_point(alpha = 0.1, color = "#CC0000") + facet_wrap("variable", scales = "free_x") + theme_minimal()
+
+```
+
+
+We can see a clear linear relationship between rm (average number of rooms per dwelling) and medv (median value of owner-occupied homes in \$1000s)
+There seems to be a relationship (albeit not exactly linear) between medv and lstat (lower status of the population (percent))
+
+# actually the relationship between rm and medv is not so linear
+
+**** learn how to do stratified sample ****
+sample_frac/sample_n
+https://stackoverflow.com/questions/23479512/stratified-random-sampling-from-data-frame
+
+Let's start with Simple Linear Regressions:
+
+```{r}
+# medv as a linear function of lstat:
+lm_lstat = lm(data = Boston, medv ~ lstat)
+summary(lm_lstat)
+
+# we saw on the plot that lstat is not completely linear w/ respect to medv, let's try a transformation of it
+
+# individual plot:
+ggplot(data = Boston, aes(x = lstat, y = medv)) + geom_point(alpha = 0.3, color = "#CC0000") + theme_light()
+# log transformed plot:
+ggplot(data = Boston, aes(x = log(lstat), y = medv)) + geom_point(alpha = 0.3, color = "#CC0000") + theme_light()
+# seems better
+
+# let's try a Simple Linear Regression using the formula medv ~ log(lstat):
+lm_log_lstat = lm(data = Boston, medv ~ log(lstat))
+summary(lm_log_lstat)
+```
+
+# Simple LR by the book:
+```{r}
+attach(Boston)
+lm.fit <- lm(medv~lstat)
+summary(lm.fit)
+# extract the coefficients
+coef(lm.fit)
+# get a confidence interval for the coefficients -- default level = 0.95
+confint(lm.fit)
+# stricter confidence interval -- level = 0.99
+confint(lm.fit, level = 0.99)
+
+# try to predict with our model
+predict(lm.fit, data.frame(lstat = c(5,10,15)))
+# prediction with confidence interval --> range of values such that, with probability P, the range will contain the true value (f(x) + error)  
+# range for E[y | x]
+predict(lm.fit, data.frame(lstat = c(5,10,15)), interval = "confidence")
+# prediction with prediction interval --> range of values such that, with probability P, the range will contain the true value (f(x))
+# range for y
+predict(lm.fit, data.frame(lstat = c(5,10,15)), interval = "prediction")
+
+# plot the two variables and the regression line
+{plot(lstat, medv)
+abline(lm.fit, col = "red")}
+
+# diagnostic plots
+# set par to view all 4 diagnostic plots together
+par(mfrow = c(2,2))
+plot(lm.fit)
+```
+From these plots we can see that the variance of error terms is not constant:
+We assume that the error terms have a standard gaussian distribution
+the variance 
+
+We also have a few high leverage points with extreme values of lstat
+
+
+```{r}
+plot(predict(lm.fit), residuals(lm.fit))
+plot(predict(lm.fit), rstudent(lm.fit))
+# compute and plot leverage statistics (y --> lev. statistic, x --> index of the observation)
+plot(hatvalues(lm.fit))
+# identify the obs with the highest lev. statistic:
+which.max(hatvalues(lm.fit))
+
+```
+# Multiple Linear Regression by the book
+
+```{r}
+attach(Boston)
+lm.fit <- lm(medv ~ lstat + age)
+summary(lm.fit)
+# we can see that adding age as additional explanatory variable did not change the goodness of our model
+# additionally we can see that the coefficient for age is close to 0 so it doesn't explain much mdev
+
+```
+Let's use all of our 13 explanatory variables
+
+```{r}
+lm.fit <- lm(medv ~ ., data = Boston)
+summary(lm.fit)
+# check collinearity with Variance Inflation Factor
+## VIF is the ratio of the variance of the coefficient when fitting the full model, divided by the variance of the coefficient when using only that variable
+# smallest value is 1 (variance is the same fitting multiple variable or 1 variable)
+# often some collinearity
+# if VIF greater than 5/10 --> problematic amount of collinearity
+library(car)
+vif(lm.fit)
+``` 
+
+Create a linear model with all but one variable:
+```{r}
+lm.fit1 <- lm(medv ~ . - age, data = Boston)
+```
+
+# Interaction terms
+
+syntax:
+lstat:black --> includes interaction term between lstat and black 
+lstat*black --> includes, lstat, age, and the interaction term lstat:age
+
+```{r}
+# just interaction term
+summary(lm(medv~ lstat:age, data = Boston))
+# individual terms + interaction term
+summary(lm(medv~ lstat*age, data = Boston))
+
+```
+
+# Non-Linear Transformations of the Predictors
+
+to create a model that predicts mdev from the square of lstat we need to use the function I():
+let's use lstat and lstat^2 as predictors (polynomial of degree 2)
+```{r}
+lm.fit2 <- lm(medv ~ lstat + I(lstat ^ 2))
+summary(lm.fit2)
+# near 0 p-value associated with the quadratic term --> better model (?)
+# R^2 better than model with just lstat -> better model
+lm.fit <- lm(medv ~ lstat)
+anova(lm.fit, lm.fit2)
+# Hypothesis testing with anova to further quantify the extent to which the quadratic term improves the model
+# H0 --> the two models fit the data equally well
+# H1 --> second model fits the data in a better way
+# F-statistic would be close to 1 if H0 true
+# F-statistic = 135 and p-value is significant --> reject H0
+
+# Not surprising because we saw evidence for non-linearity in the relationship between medv and lstat
+
+# let's plot diagnostic plots for the second model:
+par(mfrow = c(2,2))
+plot(lm.fit2)
+```
+
+# Qualitative predictors
+
+```{r}
+
+# dataset on child car seat sales
+head(Carseats)
+# it contains a qualitative predictor such as ShelveLoc w/ 3 values 
+# R will automatically generate dummy variables
+
+# linear model with all predictors PLUS some interaction terms
+lm.fit <- lm(Sales ~. +Income:Advertising + Price:Age, data = Carseats)
+summary(lm.fit)
+
+#
+attach(Carseats)
+contrasts(ShelveLoc)
+
+
+```
+
