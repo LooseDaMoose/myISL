@@ -18,5 +18,6 @@ To run the R notebooks you will need some non-standard R libraries:
 
 * tidyverse
 * ISLR
+* MASS
 * ggplot2
 * reshape2
