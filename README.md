@@ -2,7 +2,7 @@
 
 This repository is a simple container for notes and R code concerning the book Introduction to Statistical Learning.
 
-The e-version of the book is available for free [here][1]
+The e-version of the book is available for free [here][1].
 
 [1]: <http://www-bcf.usc.edu/~gareth/ISL/> "Introduction to Stastical Learning"
 
