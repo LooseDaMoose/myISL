@@ -6,7 +6,6 @@ library(MASS)
 library(ISLR)
 library(ggplot2)
 library(reshape2)
-library(tidyverse)
 set.seed(1)
 ```
 Explore data: head, summary, table(for discrete features), plotting
@@ -20,7 +19,7 @@ table(Boston$rad)
 table(Boston$chas)
 
 # create long dataframe for plotting our explanatory variables against medv, our target variable
-Blong <-melt(Boston, id = "medv")
+Blong <- melt(Boston, id = "medv")
 # let the explanatory variable scale (x-axis) free since they have very different ranges
 ggplot(data = Blong, aes(x = value, y = medv)) + geom_point(alpha = 0.1, color = "#CC0000") + facet_wrap("variable", scales = "free_x") + theme_minimal()
 

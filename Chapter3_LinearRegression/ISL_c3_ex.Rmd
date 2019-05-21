@@ -311,9 +311,9 @@ plot(lm_seats2)
 We have a high leverage observation but it does not have an extreme residual value.
 The Residuals vs Leverage plot indicates observations 26, 50 and 368 as potential outliers but, since they don't have high leverage, and we know that our model does not fit the data well we are inclined to keep them in our analysis.
 
-# Exercise 11, 12, 13 skipped
+# EXERCISE 11, 12, 13 skipped
 
-# Exercise 14
+# EXERCISE 14
 
 This problem focuses on the collinearity problem
 

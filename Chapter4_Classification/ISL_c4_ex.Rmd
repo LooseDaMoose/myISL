@@ -1,0 +1,95 @@
+# EXERCISE 10
+
+This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter's lab, except that it contains 1089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+
+a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary fun to print the results. Do any of the predictors appear to be satistically significant? If so, which ones?
+
+c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the conf. matrix is telling you about the types of mistakes made by logistic regression.
+
+d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the conf. matrix and the overall fraction of correct predictions for the held out data (from 2009 to 2010)
+
+e) Repeat d) using LDA
+
+f) Repeat d) using QDA
+
+g) Repeat d) using KNN with K = 1
+
+h) Which of these methods appears to provide the best results on this data?
+
+i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best result on the held out data (Testing dataset) Note that you should also experiment with values for K in the KNN classifier.
+
+
+First, load the needed libraries:
+
+```{r}
+library(ISLR)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(magrittr)
+```
+
+a)
+
+```{r}
+# a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+head(Weekly)
+summary(Weekly)
+#%>% mutate(Index = row.names(Weekly))
+Weekly_lag <- Weekly %>% select(-c(Year))  # just return variables and new Index variable ,Volume
+Weekly_lag <- melt(Weekly_lag, id = "Direction")  # long dataframe, use Direction as ID
+bplot1 <- ggplot(Weekly_lag, aes(x = Direction, y = value, color = Direction)) + geom_boxplot() + facet_grid(~variable, scale = "free_y") + theme_bw()
+bplot1
+#ggplot(Weekly_JR, aes(x = Index, y = value, color = variable)) + geom_boxplot() + facet_grid(variable~.)
+density1 <- ggplot(Weekly_lag, aes(x = value, color = Direction)) + geom_line(stat = "density") + facet_grid(variable~., scale = "free_y") + theme_bw()
+density1
+
+#Weekly_year <- melt(Weekly, id = c("Direction", "Year"))
+#density2 <- ggplot(Weekly_year, aes(x = log(value), color = Direction)) + geom_line(stat = "density") + facet_grid(variable~Year, scale = "free") + theme_bw()
+#density2
+
+Weekly_num <- Weekly %>% select(-c(Year, Direction))
+cor(Weekly_num)
+```
+
+No significant patterns can be seen from the data. The class-specific distributions of the predictors appear to be pretty similar except for Today (but it's not interesting to predict the trend of this week using data from this week.
+
+There appears to be no significant collinearity between our predictors
+
+b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary fun to print the results. Do any of the predictors appear to be satistically significant? If so, which ones?
+
+```{r}
+
+LR1 <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
+summary(LR1)
+full_Y <- Weekly$Direction
+LR1_probs <- predict(LR1, type = "response")
+LR1_preds05 <- rep("Down",length(full_Y))
+LR1_preds05[LR1_probs > 0.5] = "Up"
+
+table(LR1_preds05, full_Y)
+
+```
+
+we can see that we have only one signiicant p-value, for Lag2, and even that is with alpha 0.5 --> we have 5% probability of saying that there is an association between Lag2 and Direction even if it's absent.
+
+The coefficient for Lag2 is negative --> inverse relationship between Lag2 and the probability of "Up"
+
+
+c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the conf. matrix is telling you about the types of mistakes made by logistic regression.
+
+```{r}
+table(LR1_preds05, full_Y) # conf. matrix
+# fraction of correct predictions
+557/ (557 + 430)
+
+```
+
+We are predicting mostly Up even if the data set has almost an even split of Up and Down days --> not a good classifier
+
+d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the conf. matrix and the overall fraction of correct predictions for the held out data (from 2009 to 2010)
+
+
+
