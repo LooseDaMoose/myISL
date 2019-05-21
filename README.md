@@ -16,7 +16,8 @@ The code, from lab and exercise sections of the book, is stored in R notebooks.
 
 To run the R notebooks you will need some non-standard R libraries:
 
-* tidyverse
+* dplyr
+* magrittr
 * ISLR
 * MASS
 * class
