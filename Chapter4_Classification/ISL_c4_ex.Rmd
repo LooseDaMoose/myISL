@@ -25,10 +25,12 @@ First, load the needed libraries:
 
 ```{r}
 library(ISLR)
+library(MASS)
 library(ggplot2)
 library(reshape2)
 library(dplyr)
 library(magrittr)
+library(class)
 ```
 
 a)
@@ -83,7 +85,7 @@ c) Compute the confusion matrix and overall fraction of correct predictions. Exp
 ```{r}
 table(LR1_preds05, full_Y) # conf. matrix
 # fraction of correct predictions
-557/ (557 + 430)
+mean(LR1_preds05 == full_Y)
 
 ```
 
@@ -91,5 +93,228 @@ We are predicting mostly Up even if the data set has almost an even split of Up 
 
 d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the conf. matrix and the overall fraction of correct predictions for the held out data (from 2009 to 2010)
 
+```{r}
+#train <- (Year < 2009) # we can use just the column names, e.g. Year, because we attached their dataframe, Smarket, previously. 
+#Smarket_2005 <- Smarket[!train,] # select just rows for which train is FALSE
+#dim(Smarket_2005)
+#Direction_2005 <- Direction[!train] # same for the observed results --> this is the "truth" for the 2005 observations
+
+
+train <- (Weekly$Year < 2009)
+Weekly_Test <- Weekly[!train,]
+LR2 <- glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+summary(LR2)
+
+Test_Y <- Weekly$Direction[!train]
+LR2_probs <- predict(LR2, Weekly_Test, type = "response")
+LR2_preds05 <- rep("Down",length(Test_Y))
+LR2_preds05[LR2_probs > 0.5] = "Up"
+
+table(LR2_preds05, Test_Y)
+mean(LR2_preds05 == Test_Y)
+```
+
+e) Repeat d) using LDA
+
+```{r}
+LDA1 <- lda(Direction ~ Lag2, data = Weekly, subset = train)
+plot(LDA1)
+LDA1_pred <- predict(LDA1, Weekly_Test)
+summary(LDA1_pred)
+LDA1_class <- LDA1_pred$class
+table(LDA1_class, Test_Y)
+mean(LDA1_class == Test_Y)
+
+```
+
+
+f) Repeat d) using QDA
+
+```{r}
+QDA1 <- qda(Direction ~ Lag2, data = Weekly, subset = train)
+QDA1_pred <- predict(QDA1, Weekly_Test)
+summary(QDA1_pred)
+QDA1_class <- QDA1_pred$class
+table(QDA1_class, Test_Y)
+mean(QDA1_class == Test_Y)
+
+```
+
+g) Repeat d) using KNN with K = 1
+
+```{r}
+train.X <- as.matrix(Weekly$Lag2[train]) # predictors matrix -- training
+test.X <- as.matrix(Weekly$Lag2[!train]) # predictors matrix -- testing
+train.Direction <- Weekly$Direction[train] # labels for training
+
+set.seed(1)
+KNN1_pred <- knn(train.X, test.X, train.Direction, k = 1)
+table(KNN1_pred, Test_Y)
+mean(KNN1_pred == Test_Y)
+
+```
+
+h) Which of these methods appears to provide the best results on this data?
+
+Linear Regression
+
+i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best result on the held out data (Testing dataset) Note that you should also experiment with values for K in the KNN classifier.
+
+
+skipped
+
+# EXERCISE 11
+
+In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set
+
+NOT USING THE mpg VARIABLE!
+
+a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median.
+
+b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this quastion. Describe your findings.
+
+c) Split the data into a training set and a test set.
+
+d) perform LDA on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+e) perform QDA on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+f) perform logistic regression on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+g) perform KNN on the training set (using several values of K) using the variables that seemed most associated wth mpg01 in b) What is the test error? Which value of K is the best?
+
+
+
+a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median.
+
+```{r}
+head(Auto)
+Auto <- Auto %>% mutate(mpg01 = 
+                  as.factor(
+                    case_when(
+                    mpg > median(mpg) ~ 1,
+                    mpg < median(mpg) ~ 0
+                  )
+                )
+              ) 
+
+
+
+
+```
+
+b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+
+```{r}
+Auto_num <- Auto %>% select(-c(mpg, name, origin, cylinders))
+Auto_cat <- Auto %>% select(c(mpg01, origin, cylinders)) %>% mutate(origin = as.factor(origin), cylinders = as.factor(cylinders))
+## I know year is not continuous but for ease of plotting I put it with cont. predictors
+Auto_num_long <- melt(Auto_num, id ="mpg01")
+# boxplot
+bnum <- ggplot(data = Auto_num_long, aes(x = mpg01, y = value, color = mpg01)) + geom_boxplot() + facet_grid(variable~., scale = "free_y") + theme_bw()
+bnum
+# density plot
+dnum <- ggplot(data = Auto_num_long, aes(x = value, color = mpg01)) + geom_line(stat = "density") + facet_wrap(~variable, scale = "free") + theme_bw()
+dnum
+## barplot for discrete data
+bcyl <- ggplot(data = Auto_cat, aes(x = cylinders, fill = mpg01)) + geom_bar( position = "dodge") + theme_bw()
+bcyl
+bori <- ggplot(data = Auto_cat, aes(x = origin, fill = mpg01)) + geom_bar( position = "dodge") + theme_bw()
+bori
+```
+
+We can see different distributions for the two categories for several predictors:
+
+- year
+- weight
+- displacement
+- horsepower
+
+- origin --> Japan > Europe > Japan
+- cylinders --> almost all low gasoline cars have 4 cylinders
+
+
+c) Split the data into a training set and a test set.
+
+```{r}
+# get 80% of dataset as training, rest as testing
+Train_Auto <- sample_frac(Auto, 0.8)
+train <- (row.names(Auto) %in%row.names(Train_Auto))
+Test_Auto <- Auto[!train,]
+
+#
+dim(Train_Auto) # 314 obs
+dim(Test_Auto)  # 78 obs
+```
+
+
+
+d) perform LDA on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+```{r}
+LDA_auto <- lda(mpg01 ~ year + origin + weight + horsepower + cylinders + displacement, data = Auto, subset = train)
+plot(LDA_auto)
+LDA_auto_pred <- predict(LDA_auto, Test_Auto)
+summary(LDA_auto_pred)
+LDA_auto_class <- LDA_auto_pred$class
+table(LDA_auto_class, Test_Auto$mpg01)
+mean(LDA_auto_class != Test_Auto$mpg01)
+```
+Test error is low --> ~9 %
+
+e) perform QDA on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+```{r}
+QDA_auto <- qda(mpg01 ~ year + origin + weight + horsepower + cylinders + displacement, data = Auto, subset = train)
+QDA_auto_pred <- predict(QDA_auto, Test_Auto)
+summary(QDA_auto_pred)
+QDA_auto_class <- QDA_auto_pred$class
+table(QDA_auto_class, Test_Auto$mpg01)
+mean(QDA_auto_class != Test_Auto$mpg01)
+```
+
+The test error is ~ 14%, ~60% more than with LDA 
+
+f) perform logistic regression on the training set using the variables that seemed most associated wth mpg01 in b) What is the test error?
+
+```{r}
+LR_auto <- glm(mpg01 ~ year + origin + weight + horsepower + cylinders + displacement, data = Auto, subset = train, family = binomial)
+summary(LR_auto)
+LR_auto_probs <- predict(LR_auto, type = "response", newdata = Test_Auto)
+LR_auto_preds05 <- rep("0",length(Test_Auto$mpg01))
+LR_auto_preds05[LR_auto_probs > 0.5] = "1"
+
+table(LR_auto_preds05, Test_Auto$mpg01)
+mean(LR_auto_preds05 != Test_Auto$mpg01)
+```
+
+Test error is ~ 10%
+
+g) perform KNN on the training set (using several values of K) using the variables that seemed most associated wth mpg01 in b) What is the test error? Which value of K is the best?
+
+```{r}
+
+train.X <- Train_Auto %>% select(year, origin, weight, horsepower, cylinders, displacement) # predictors matrix -- training
+test.X <- Test_Auto %>% select(year, origin, weight, horsepower, cylinders, displacement) # predictors matrix -- testing
+train.mpg01 <- Train_Auto$mpg01 # labels for training
+
+set.seed(1)
+
+for (i in c(1,3,5,7,9)){
+  KNN1_pred <- knn(train.X, test.X, train.mpg01, k = i)
+  print(sprintf("K = %d:", i))
+  print(table(KNN1_pred, Test_Auto$mpg01))
+  print(mean(KNN1_pred != Test_Auto$mpg01))
+  print("+++++++++++++++++++++")
+}
+
+
+```
+Test error rate ~ 10% for k = 5 or 7 worse results with more (smaller k) or less (bigger k) flexibility
+
+# EXERCISE 13 -- skipped, same as above
+
+Using the Boston data set, fit classification models in order to predict whether a given suburb has a crime rate above or below the median.
+Explore logistic regression, LDA, and KNN models using various subsets of the predictors. Describe your findings
 
 
