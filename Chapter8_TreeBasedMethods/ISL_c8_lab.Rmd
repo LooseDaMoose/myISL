@@ -4,7 +4,7 @@ output: html_notebook
 ---
 
 
-ISL Chapter 8 -- Tree-Based Methods
+# ISL Chapter 8 -- Tree-Based Methods
 
 # Fitting Classification Trees
 

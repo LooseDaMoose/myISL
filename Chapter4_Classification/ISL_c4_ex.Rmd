@@ -1,3 +1,9 @@
+---
+title: "ISL Chapter 4 Exercises -- Classification"
+output: html_notebook
+---
+
+
 # EXERCISE 10
 
 This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter's lab, except that it contains 1089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.

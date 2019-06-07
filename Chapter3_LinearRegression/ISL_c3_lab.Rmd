@@ -1,4 +1,10 @@
-ISL Chapter 3 -- Linear Regression
+---
+title: "ISL Chapter 3 Lab -- Linear Regression"
+output: html_notebook
+---
+
+
+# ISL Chapter 3 -- Linear Regression
 
 Load required libraries:
 ```{r}

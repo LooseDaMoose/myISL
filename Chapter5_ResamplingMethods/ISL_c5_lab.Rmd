@@ -1,4 +1,10 @@
-ISL Chapter 5 -- Resampling Methods
+---
+title: "ISL Chapter 5 Lab -- Resampling Methods"
+output: html_notebook
+---
+
+
+# ISL Chapter 5 -- Resampling Methods
 
 # The Validation Set Approach
 

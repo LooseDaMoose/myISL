@@ -1,4 +1,10 @@
-ISL Chapter 6 -- Subset Selection Methods
+---
+title: "ISL Chapter 6 Lab 1 -- Subset Selection Methods"
+output: html_notebook
+---
+
+
+# ISL Chapter 6 -- Subset Selection Methods
 # LAB 1
 
 # Best Subset Selection

@@ -1,3 +1,9 @@
+---
+title: "ISL Chapter 3 Exercises -- Linear Regression"
+output: html_notebook
+---
+
+
 # EXERCISE 8
 
 This question involves the use of simple linear regression on the Auto data set

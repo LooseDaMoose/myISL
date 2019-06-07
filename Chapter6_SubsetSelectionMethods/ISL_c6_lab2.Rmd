@@ -1,4 +1,11 @@
-ISL Chapter 6 -- Subset Selection Methods
+---
+title: "ISL Chapter 6 Lab 2 -- Subset Selection Methods"
+output: html_notebook
+---
+
+
+
+# ISL Chapter 6 -- Subset Selection Methods
 # LAB 2
 
 # Ridge Regression and the Lasso

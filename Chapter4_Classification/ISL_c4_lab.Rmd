@@ -1,4 +1,10 @@
-ISL Chapter 4 -- Classification
+---
+title: "ISL Chapter 4 Lab -- Classification"
+output: html_notebook
+---
+
+
+# ISL Chapter 4 -- Classification
 
 
 The Stock Market Data

@@ -1,4 +1,10 @@
-ISL Chapter 7 -- Moving Beyond Linearity
+---
+title: "ISL Chapter 7 Lab -- Moving Beyond Linearity"
+output: html_notebook
+---
+
+
+# ISL Chapter 7 -- Moving Beyond Linearity
 
 # Non-Linear Modeling
 
