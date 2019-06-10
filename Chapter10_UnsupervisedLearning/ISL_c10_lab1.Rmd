@@ -1,0 +1,70 @@
+---
+title: "ISL Chapter 10 -- Unsupervised Learning - Lab 1: Principal Component Analysis"
+output: html_notebook
+---
+
+# Principal Component Analysis
+
+In this lab, we perform PCA on the USArrests data se, which is part of the base R package. The rows of the data set contain the 50 states, in alphabetical order.
+```{r}
+states <- row.names(USArrests)
+states
+# the columsns of the data set contain the four variables
+names(USArrests)
+# we first briefly examine the data. We notice that the variables have vastly different means
+apply(USArrests, 2, mean)
+# we can also compute the variance of the same variables
+apply(USArrests, 2, var)
+```
+Note that the apply() function allows us to apply a function -- in this case mean() -- to each row or column of the data set. The second argument here denotes whether we wish to apply the function to the rows (1) or to the columns (2).
+
+We see that there are on average three times as many rapes as murders, and more than eight times as many assaults as rapes.
+
+Not surprisingly, the variables also have vastly different variances: the UrbanPop variable measures the percentage of the population in each state living in an urban area, which is not a comparable number to the number of rapes in each states per 100k indinviduals. If we failed to scale the variables before performing PCA,  then most of the principal components that we observed would be driven by the Assault variable, since it has by far the largest mean and variance. 
+
+Thus is important to standardize the variables to have mean zero and standard deviation one before performing PCA.
+
+We now perform PCA using the prcomp() function, which is one of several functions in R that perform PCA.
+
+By default the prcomp() function centers the variables to have mean zero. By using the option scale = TRUE, we scale the variables to have standard deviation one. THe output from prcomp() contains a number of useful quantities.
+
+```{r}
+pr_out <- prcomp(USArrests, scale = TRUE)
+names(pr_out)
+# the center and scale components correspond to the means and stardard deviations of the variables that were used for scaling prior to implementing PCA
+pr_out$center
+pr_out$scale
+# the rotation matrix provides the principal components loadings; each column of pr_out$rotation contgains the corresponding principal component loading vector
+pr_out$rotation
+```
+We see that there are four distinct principal components. This is to be expected because there are in general min(n -1, p) informative principal components in a data set with n observations and p variables.
+
+Using the prcomp() function, we do not need to explicitly multiply the data by the principal componente loading vectors in order to obtain the principal component score vectors. Rather the 50 x 4 matrix x has as its columns the principal components score vectors. That is the kth column is the kth principal component score vector.
+```{r}
+dim(pr_out$x)
+# We can plot the first two principal components as follows.
+biplot(pr_out, scale = 0)
+```
+The scale = 0 argument to biplot() ensures that the arrows are scaled to represent the loadings; other values for scale give slightly different biplots with different interpretations.
+
+The prcomp() function also outputs the standard deviation of each principal component.
+```{r}
+pr_out$sdev
+# the variance explained by each principal component is obtained by squaring these:
+pr_var <- pr_out$sdev^2
+pr_var
+```
+To compute the proportion of variance explained by each principal component, we simply divide the variance explained by each principal component by the toal variance explained by all four principal components:
+```{r}
+pve <- pr_var/sum(pr_var)
+pve
+```
+We see that the first principal component explains 62.0% of the variance in the data, the next pc explains 24.7% of the variance and so forth. We can plot the PVE explained by each component, as well as the cumulative PVE, as follows:
+```{r}
+plot(pve, xlab = "Principal Component", ylab = "Proportion of Variance Explained", ylim = c(0,1), type = "b")
+plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative Proportion of Variance Explained", ylim = c(0,1), type = "b")
+```
+Note that the function cumsum() computes the cumulative sum of the elements of a numeric vector.
+
+
+
